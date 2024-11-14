@@ -1,0 +1,95 @@
+(defun bubble-step (lst limit last-swap &key (key #'identity) (test #'<))
+  (if (or (null (cdr lst)) (= limit 0))
+      (values lst last-swap)
+      (let* ((a (car lst))
+             (b (cadr lst))
+             (key-a (funcall key a))
+             (key-b (funcall key b)))
+        (if (funcall test key-b key-a)
+            (let* ((swapped (cons b (cons a (cddr lst)))))
+              (multiple-value-bind (sorted-lst new-last-swap)
+                  (bubble-step (cdr swapped) (1- limit) t :key key :test test)
+                (values (cons (car swapped) sorted-lst)
+                        (or new-last-swap (1- limit)))))
+            (multiple-value-bind (sorted-lst new-last-swap)
+                (bubble-step (cdr lst) (1- limit) last-swap :key key :test test)
+              (values (cons a sorted-lst)
+                      (or new-last-swap last-swap)))))))
+
+(defun recursive-bubble-sort (lst &key (key #'identity) (test #'<))
+  (labels ((recursive-sort (lst limit)
+             (multiple-value-bind (new-lst last-swap)
+                 (bubble-step lst limit nil :key key :test test)
+               (if last-swap
+                   (recursive-sort new-lst (1- limit))
+                   new-lst))))
+    (recursive-sort lst (length lst))))
+
+(defun run-recursive-sort-test (input expected-result test-description &key (key #'identity) (test #'<))
+  (let ((result (recursive-bubble-sort input :key key :test test)))
+    (if (equal result expected-result)
+        (format t "~A: success.~%" test-description)
+        (format t "~A: failed! ~%Expected: ~A~%Got: ~A~%" test-description expected-result result))))
+
+(defun test-sorting-recursive ()
+  (format t "Testing recursive-bubble-sort...~%")
+  (run-recursive-sort-test '(3 1 4 1 5 9 2 6 5 3 5) '(1 1 2 3 3 4 5 5 5 6 9) "1")
+  (run-recursive-sort-test '(1 2 3 4 5) '(1 2 3 4 5) "2")
+  (run-recursive-sort-test '(5 4 3 2 1) '(1 2 3 4 5) "3")
+  (run-recursive-sort-test '() '() "4")
+  (run-recursive-sort-test '(1) '(1) "5")
+  (run-recursive-sort-test '(1 2 2 1) '(1 1 2 2) "6")
+  (run-recursive-sort-test '(3 -1 -4 1 -5 9 -2 6 -5 3 -5) '(-1 1 -2 3 3 -4 -5 -5 -5 6 9)
+                           "7"
+                           :key #'abs)
+  (run-recursive-sort-test '(3 -1 -4 1 -5 9 -2 6 -5 3 -5) '(-1 1 -2 3 3 -4 -5 -5 -5 6 9)
+                           "8"
+                           :key #'abs :test #'<)
+  (run-recursive-sort-test '(3 -1 -4 1 -5 9 -2 6 -5 3 -5) '(1 -1 -2 3 3 -4 -5 -5 -5 6 9)
+                           "9"
+                           :key #'abs :test #'<=)
+  (run-recursive-sort-test '(3 -1 -4 1 -5 9 -2 6 -5 3 -5) '(9 6 -5 -5 -5 -4 3 3 -2 -1 1)
+                           "10"
+                           :key #'abs :test #'>)
+  (run-recursive-sort-test '(3 2 5 4 1) '(1 2 3 4 5) "11" :test #'<=)
+  (run-recursive-sort-test '(3 2 5 4 1) '(5 4 3 2 1) "12" :test #'>)
+  (run-recursive-sort-test '((2 . 3) (1 . 2) (4 . 5) (3 . 1))
+                           '((1 . 2) (2 . 3) (3 . 1) (4 . 5))
+                           "13"
+                           :key #'car)
+  (run-recursive-sort-test '((2 . 3) (1 . 2) (4 . 5) (3 . 1))
+                           '((3 . 1) (1 . 2) (2 . 3) (4 . 5))
+                           "14"
+                           :key #'cdr))
+
+
+
+
+(defun add-next-fn (&key (transform 'identity))
+  (let ((prev-element nil))
+  (lambda (current)
+    (if (not(null prev-element)) 
+         (progn (rplacd prev-element (funcall transform current))
+                (setf current (cons (cdr prev-element) nil))
+                (setf prev-element current))
+         (setf prev-element (cons (funcall transform current) nil)))
+      )))
+
+(defun run-next-fn-test (input transform expected-result test-description)
+  (let ((result (if(not(null transform))(mapcar (add-next-fn :transform transform) input)(mapcar (add-next-fn) input))))
+    (if (equal result expected-result)
+        (format t "~A: success.~%" test-description)
+        (format t "~A: failed! ~%Expected: ~A~%Got: ~A~%" test-description expected-result result))))
+
+(defun add-next-fn-test ()
+  (format t "Testing add-next-fn...~%")
+  (run-next-fn-test '(1 2 3) nil '((1 . 2) (2 . 3) (3 . NIL)) "1 ")
+  (run-next-fn-test '(1 2 3) #'1+ '((2 . 3) (3 . 4) (4 . NIL)) "2 ")
+  (run-next-fn-test '() nil '() "3 ")
+  (run-next-fn-test '(1) nil '((1 . NIL)) "4 ")
+  (run-next-fn-test '(1) #'1+ '((2 . NIL)) "5 ")
+  (format t "Test completed~%"))
+
+
+(test-sorting-recursive)
+(add-next-fn-test)
