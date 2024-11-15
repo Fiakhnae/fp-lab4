@@ -62,16 +62,12 @@
                            "14"
                            :key #'cdr))
 
-
-
-
 (defun add-next-fn (&key (transform 'identity))
   (let ((prev-element nil))
   (lambda (current)
-    (if (not(null prev-element)) 
+    (if prev-element  
          (progn (rplacd prev-element (funcall transform current))
-                (setf current (cons (cdr prev-element) nil))
-                (setf prev-element current))
+                (setf prev-element (cons (cdr prev-element) nil)))
          (setf prev-element (cons (funcall transform current) nil)))
       )))
 
